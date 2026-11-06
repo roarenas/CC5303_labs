@@ -1,0 +1,77 @@
+name: lab2
+services:
+  backend:
+    build:
+      context: ./webapp
+      dockerfile: Dockerfile
+    healthcheck:
+      test: [ "CMD-SHELL", "curl http://127.0.0.1:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 5s
+    #pre_stop:
+    #  - command: 
+    #    user: root
+    depends_on:
+      - frontend
+      #frontend:
+        #condition: service_healthy
+    deploy:
+      replicas: 1
+    environment:
+      - BACKEND= wbackend
+      - HAPROXY_API_HOST= frontend
+      - HAPROXY_API_PORT= 9999
+      - SERVER_PORT= 8000
+    networks:
+      - intranet1
+
+  frontend:
+    image: haproxy:3.4.0
+    restart: unless-stopped
+    env_file:
+      - ./haproxy/.env
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    #depends_on:
+    #  backend:
+    #    condition: service_healthy
+    ports:
+      - "8000:8000"
+      - "8888:8888"
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8181 && echo -e 'GET /health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | grep -q '200 OK'"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks:
+        - intranet1
+        - intranet2
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    volumes:
+      - ./log:/tmp/log
+    depends_on:
+      frontend:
+        condition: service_started
+      backend:
+        condition: service_healthy
+    networks:
+      - intranet2
+    environment:
+      - URL=http://frontend:8000/random
+    deploy:
+      replicas: 1
+    #extra_hosts:
+    #  - "webapp:host-gateway"
+
+networks:
+  intranet1:
+    internal: true
+  intranet2:
+    driver: bridge

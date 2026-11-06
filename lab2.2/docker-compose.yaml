@@ -1,0 +1,30 @@
+name: lab2
+services:
+  webapp:
+    build:
+      context: ./webapp
+      dockerfile: Dockerfile
+    healthcheck:
+      test: [ "CMD-SHELL", "curl http://127.0.0.1:8000/random" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    networks:
+      - intranet1
+      
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    volumes:
+      - ./log:/tmp/log
+    depends_on:
+      webapp:
+        condition: service_healthy
+    networks:
+      - intranet1
+
+networks:
+  intranet1:
+    driver: bridge

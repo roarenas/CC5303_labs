@@ -1,0 +1,21 @@
+name: lab2
+services:
+  webapp:
+    build:
+      context: ./webapp
+      dockerfile: Dockerfile
+    networks:
+      - intranet1
+      
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    volumes:
+      - ./log:/tmp/log
+    networks:
+      - intranet1
+
+networks:
+  intranet1:
+    driver: bridge
